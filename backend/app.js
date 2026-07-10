@@ -1,9 +1,9 @@
 const express = require('express');
 const helmet = require('helmet');
-const session = require('express-session');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
+const sessionConfig = require('./config/session');
 
 const app = express();
 
@@ -12,23 +12,14 @@ app.use(helmet());
 
 // Parse JSON requests
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false, // change to true when using HTTPS
-      maxAge: 1000 * 60 * 30 // 30 minutes
-    }
-  })
-);
+app.use(sessionConfig);
 
 // Routes
 app.use('/api/auth', authRoutes);
+
 
 // Health check
 app.get('/', (req, res) => {
