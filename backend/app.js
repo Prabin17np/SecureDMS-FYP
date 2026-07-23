@@ -12,8 +12,8 @@ const app = express();
 
 // Security headers.
 // crossOriginResourcePolicy is relaxed from Helmet's default
-// ('same-origin') because the frontend (localhost:5173) and this API
-// (localhost:5000) are different origins by design in dev. Left at
+//('same-origin') because the frontend (https://localhost:5173) and this API
+//(https://localhost:5000) are different origins. Left at
 // the default, Helmet's own header would block the frontend's fetches
 // even after CORS below is configured correctly - this is a common
 // gotcha when frontend and backend run on separate ports.
@@ -22,11 +22,15 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      frameAncestors: ["'self'", "http://localhost:5173"], // Allow backend to be embedded in frontend iframe
+      frameAncestors: ["'self'", "https://localhost:5173"], // Allow backend to be embedded in frontend iframe
       imgSrc: ["'self'", "data:"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
+      connectSrc: [
+  "'self'",
+  "https://localhost:5000"
+],
+
     },
   },
 }));
@@ -38,7 +42,7 @@ app.use(helmet({
 // 2. credentials: true must be set here to match withCredentials on
 //    the client, or the browser drops the session cookie entirely.
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'https://localhost:5173',
   credentials: true,
 }));
 
