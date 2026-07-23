@@ -16,7 +16,6 @@ function isAuthenticated(req, res, next) {
 }
 
 // Not required by this task yet, but included now so future admin
-// routes (e.g. "view all documents") can chain it after isAuthenticated
 // without touching this file again.
 function isAdmin(req, res, next) {
   if (!req.session || req.session.role !== 'admin') {

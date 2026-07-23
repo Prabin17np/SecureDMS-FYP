@@ -1,18 +1,33 @@
-// Defines the auth endpoints. No business logic here on purpose —
-// this file should be readable top-to-bottom as a map of "what auth
-// actions exist" without needing to dig into implementation details.
-
 const express = require('express');
+const rateLimit = require('express-rate-limit'); // Import the express-rate-limit package
 const router = express.Router();
 
 const authController = require('../controllers/authController');
 const { registerValidationRules, loginValidationRules, handleValidationErrors } = require('../middleware/validate');
+const { isAuthenticated } = require('../middleware/auth');
+
+// Rate limiter for login: max 5 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 5,  // max 5 requests per windowMs
+  message: 'Too many login attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,  
+});
+
+// Rate limiter for registration: max 5 attempts per hour per IP
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 5,  // max 5 requests per hour
+  message: 'Too many registration attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // POST /api/auth/register
-// Validation runs first; if it fails, handleValidationErrors short-circuits
-// the request before it ever reaches the controller/DB.
 router.post(
   '/register',
+  registerLimiter,
   registerValidationRules(),
   handleValidationErrors,
   authController.register
@@ -21,14 +36,15 @@ router.post(
 // POST /api/auth/login
 router.post(
   '/login',
+  loginLimiter,
   loginValidationRules(),
   handleValidationErrors,
   authController.login
 );
 
 // POST /api/auth/logout
-// No body to validate — just needs an active session, which the
-// controller checks itself.
 router.post('/logout', authController.logout);
+// GET /api/auth/me
+router.get('/me', isAuthenticated, authController.getCurrentUser);
 
 module.exports = router;

@@ -75,6 +75,25 @@ exports.login = async (req, res) => {
   }
 };
 
+// GET /api/auth/me
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await authService.getUserById(req.session.userId);
+
+    if (!user) {
+      // Session points to a user that no longer exists - clear it
+      // rather than leaving a dangling session alive.
+      req.session.destroy(() => {});
+      return res.status(401).json({ success: false, message: 'Session is no longer valid.' });
+    }
+
+    return res.status(200).json({ success: true, user });
+  } catch (err) {
+    console.error('Get current user error:', err.message);
+    return res.status(500).json({ success: false, message: 'Could not verify session.' });
+  }
+};
+
 // POST /api/auth/logout
 exports.logout = async (req, res) => {
   if (!req.session || !req.session.userId) {

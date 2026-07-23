@@ -91,6 +91,69 @@ function getSafeFilePath(document) {
   return resolveSafePath(document.file_path);
 }
 
+async function updateDocument(documentId, requesterId, requesterRole, { title, newFile }, ipAddress) {
+  const document = await getDocumentForAccess(documentId, requesterId, requesterRole);
+ 
+  if (!document) {
+    return { success: false, message: 'Document not found.' };
+  }
+ 
+  const trimmedTitle = typeof title === 'string' ? title.trim() : undefined;
+  const isRenaming = trimmedTitle && trimmedTitle !== document.title;
+  const isReplacingFile = Boolean(newFile);
+ 
+  if (!isRenaming && !isReplacingFile) {
+    return { success: false, message: 'No changes provided.' };
+  }
+ 
+  const nextTitle = isRenaming ? trimmedTitle : document.title;
+  const nextOriginalName = isReplacingFile ? newFile.originalname : document.original_name;
+  const nextStoredName = isReplacingFile ? newFile.filename : document.stored_name;
+  const nextFilePath = isReplacingFile ? newFile.path : document.file_path;
+  const nextFileSize = isReplacingFile ? newFile.size : document.file_size;
+  const nextMimeType = isReplacingFile ? newFile.mimetype : document.mime_type;
+ 
+  const result = await pool.query(
+    `UPDATE documents
+     SET title = $1, original_name = $2, stored_name = $3, file_path = $4, file_size = $5, mime_type = $6
+     WHERE id = $7
+     RETURNING id, title, original_name, file_size, mime_type, uploaded_at`,
+    [nextTitle, nextOriginalName, nextStoredName, nextFilePath, nextFileSize, nextMimeType, document.id]
+  );
+ 
+  // Only delete the OLD file after the DB row has been safely
+  // repointed at the new one - see function header for why this
+  // order matters.
+  if (isReplacingFile) {
+    try {
+      const oldSafePath = resolveSafePath(document.file_path);
+      if (fs.existsSync(oldSafePath)) {
+        fs.unlinkSync(oldSafePath);
+      }
+    } catch (err) {
+      console.error('Old file cleanup error during update:', err.message);
+      // Not fatal - the DB record is already correct, which is what
+      // actually governs access. A leftover old file on disk is a
+      // cleanup issue, not a security or correctness one.
+    }
+  }
+ 
+  const changeDescription = [
+    isRenaming ? `title changed to "${nextTitle}"` : null,
+    isReplacingFile ? 'file replaced' : null,
+  ].filter(Boolean).join(', ');
+ 
+  await logActivity({
+    userId: requesterId,
+    actionType: 'update',
+    description: `Updated document "${nextTitle}" (id: ${document.id}) - ${changeDescription}`,
+    ipAddress,
+  });
+ 
+  return { success: true, document: result.rows[0] };
+}
+
+
 // Delete: soft-delete in DB (keeps the audit trail in activity_logs
 // meaningfulyou can still see "user X deleted document Y" without
 // a dangling foreign key), then remove the physical file.
@@ -132,5 +195,6 @@ module.exports = {
   getAllDocuments,
   getDocumentForAccess,
   getSafeFilePath,
+  updateDocument,
   deleteDocument,
 };

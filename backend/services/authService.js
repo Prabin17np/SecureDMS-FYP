@@ -1,9 +1,7 @@
 
 // All database queries, bcrypt hashing/comparison, and account
 // lockout rules live here. Nothing in this file knows about
-// req/res — it only takes plain data in and returns plain
-// result objects, so it can be tested or reused (e.g. by an
-// admin "unlock user" endpoint later) without touching HTTP code.
+// req/res it only takes plain data in and returns plain
 
 const bcrypt = require('bcrypt');
 const pool = require('../config/db');
@@ -14,7 +12,7 @@ const LOCK_DURATION_MINUTES = 15;
 
 // Registration
 async function registerUser({ username, email, full_name, password }) {
-  // Check for existing username/email in one query (parameterized —
+  // Check for existing username/email in one query (parameterized
   // values never get concatenated into the SQL string).
   const existing = await pool.query(
     'SELECT id FROM users WHERE username = $1 OR email = $2',
@@ -139,9 +137,20 @@ async function logFailedLogin({ attemptedUsername, ipAddress, reason }) {
   );
 }
 
+// Session verification (GET /api/auth/me)
+// Only returns non-sensitive fields - never password_hash.
+async function getUserById(userId) {
+  const result = await pool.query(
+    `SELECT id, username, role FROM users WHERE id = $1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
 module.exports = {
   registerUser,
   loginUser,
   logActivity,
   logFailedLogin,
+  getUserById,
 };
