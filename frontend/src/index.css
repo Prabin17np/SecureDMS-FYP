@@ -1,0 +1,47 @@
+/* src/index.css
+   Tailwind layers + a small set of global rules that aren't
+   convenient to express as utility classes (font import fallback,
+   focus-visible outline, reduced-motion). Design tokens themselves
+   (colors, animation) live in tailwind.config.js as the single
+   source of truth. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #F8FAFC;
+}
+
+/* Tabular numbers for file sizes / dates so columns of numbers align */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visible keyboard focus - accessibility baseline, not optional */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #2563EB;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
